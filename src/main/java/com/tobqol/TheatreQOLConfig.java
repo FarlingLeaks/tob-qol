@@ -809,6 +809,18 @@ public interface TheatreQOLConfig extends Config
 		return 65;
 	}
 
+	@ConfigItem(
+			name = "Xarpus Healing",
+			keyName = "xarpusHealing",
+			description = "- Shows how much Xarpus healed from exhumeds in the room time chat message and infobox",
+			position = 5,
+			section = XARPUS_SECTION
+	)
+	default boolean xarpusHealing()
+	{
+		return true;
+	}
+
 	/**
 	 * Verzik Configs
 	 */

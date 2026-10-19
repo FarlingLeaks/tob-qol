@@ -41,6 +41,7 @@ import com.tobqol.timetracking.RoomInfoBox;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
+import net.runelite.api.HitsplatID;
 import net.runelite.api.NPC;
 import net.runelite.api.events.*;
 import net.runelite.client.chat.ChatColorType;
@@ -81,6 +82,12 @@ public class XarpusHandler extends RoomHandler
 
 	@Inject
 	private AudioService audioService;
+
+	/**
+	 * Total amount Xarpus has healed (heal hitsplats on Xarpus, e.g. from exhumeds) in the current room.
+	 */
+	@Getter
+	private int healed = 0;
 
 	@Inject
 	protected XarpusHandler(TheatreQOLPlugin plugin, TheatreQOLConfig config)
@@ -152,6 +159,12 @@ public class XarpusHandler extends RoomHandler
 		isNpcFromName(e.getNpc(), XarpusConstants.BOSS_NAME, n ->
 		{
 			instance.lazySetMode(() -> XarpusTable.findMode(n.getId()));
+
+			if (xarpusNpc == null)
+			{
+				healed = 0;
+			}
+
 			xarpusNpc = n;
 			phase = XarpusPhase.compose(n);
 
@@ -256,6 +269,20 @@ public class XarpusHandler extends RoomHandler
 	}
 
 	@Subscribe
+	private void onHitsplatApplied(HitsplatApplied e)
+	{
+		if (xarpusNpc == null || e.getActor() != xarpusNpc || !instance.getCurrentRegion().isXarpus())
+		{
+			return;
+		}
+
+		if (e.getHitsplat().getHitsplatType() == HitsplatID.HEAL)
+		{
+			healed += e.getHitsplat().getAmount();
+		}
+	}
+
+	@Subscribe
 	private void onGroundObjectSpawned(GroundObjectSpawned e)
 	{
 		if (!active() || exhumedTracker == null)
@@ -344,6 +371,11 @@ public class XarpusHandler extends RoomHandler
 				tooltip = "Complete - " + formatTime(dataHandler.FindValue("Room")) + "*";
 			}
 
+			if (config.xarpusHealing())
+			{
+				tooltip += "</br>Healed - " + healed;
+			}
+
 			xarpuInfoBox = createInfoBox(plugin, config, itemManager.getImage(BOSS_IMAGE), "Xarpus", formatTime(dataHandler.FindValue("Room")), tooltip);
 			infoBoxManager.addInfoBox(xarpuInfoBox);
 		}
@@ -384,6 +416,14 @@ public class XarpusHandler extends RoomHandler
 							.append(" - " + formatTime(dataHandler.FindValue("Room")) + "*"));
 				}
 			}
+		}
+
+		if (config.xarpusHealing())
+		{
+			enqueueChatMessage(ChatMessageType.GAMEMESSAGE, b -> b
+					.append(Color.RED, "Xarpus - Healed")
+					.append(ChatColorType.NORMAL)
+					.append(" - " + healed));
 		}
 	}
 }
